@@ -89,19 +89,18 @@ ConfluencePharoAPI >> generalReader: anObject [
 ]
 
 { #category : #'api - content' }
-ConfluencePharoAPI >> getContent: id [
+ConfluencePharoAPI >> getPage: id [
 
-	^ self getContent: id withExpand: { #'body.view' . #space }
+	^ self getPage: id bodyFormat: #view
 ]
 
 { #category : #'api - content' }
-ConfluencePharoAPI >> getContent: id withExpand: aCollectionOfExpand [
+ConfluencePharoAPI >> getPage: id bodyFormat: theBodyFormat [
 
 	self prepareZnClient.
-	znClient path: self basePath , '/content/' , id printString.
-	aCollectionOfExpand ifNotEmpty: [ :expand |
-		znClient queryAt: #expand put: (String streamContents: [ :str |
-				 expand do: [ :each | str << each ] separatedBy: [ str << ',' ] ]) ].
+	znClient path: self basePath , '/pages/' , id printString.
+	theBodyFormat ifNotNil: [ :bodyFormat |
+		znClient queryAt: #'body-format' put: theBodyFormat ].
 	self rawData ifFalse: [
 		znClient contentReader: [ :entity |
 			generalReader
