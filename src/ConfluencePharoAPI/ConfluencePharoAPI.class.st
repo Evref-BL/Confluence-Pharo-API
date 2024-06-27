@@ -91,8 +91,17 @@ ConfluencePharoAPI >> generalReader: anObject [
 { #category : #'api - content' }
 ConfluencePharoAPI >> getContent: id [
 
+	^ self getContent: id withExpand: { #'body.view' . #space }
+]
+
+{ #category : #'api - content' }
+ConfluencePharoAPI >> getContent: id withExpand: aCollectionOfExpand [
+
 	self prepareZnClient.
 	znClient path: self basePath , '/content/' , id printString.
+	aCollectionOfExpand ifNotEmpty: [ :expand |
+		znClient queryAt: #expand put: (String streamContents: [ :str |
+				 expand do: [ :each | str << each ] separatedBy: [ str << ',' ] ]) ].
 	self rawData ifFalse: [
 		znClient contentReader: [ :entity |
 			generalReader
@@ -104,8 +113,21 @@ ConfluencePharoAPI >> getContent: id [
 { #category : #initialization }
 ConfluencePharoAPI >> initReader [
 
+	generalReader for: ConfluencePharoPage do: [ :mapping |
+		mapping mapAllInstVars.
+		(mapping mapInstVar: #space) valueSchema: ConfluencePharoSpace.
+		(mapping mapInstVar: #body) valueSchema: ConfluencePharoPageBody ].
+
 	generalReader
-		for: ConfluencePharoPage
+		for: ConfluencePharoSpace
+		do: [ :mapping | mapping mapAllInstVars ].
+
+	generalReader for: ConfluencePharoPageBody do: [ :mapping |
+		mapping mapAllInstVars.
+		(mapping mapInstVar: #view) valueSchema: ConfluencePharoPageBodyView ].
+
+	generalReader
+		for: ConfluencePharoPageBodyView
 		do: [ :mapping | mapping mapAllInstVars ]
 ]
 
