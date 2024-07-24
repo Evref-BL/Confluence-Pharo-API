@@ -138,6 +138,23 @@ ConfluencePharoAPI >> getPage: id bodyFormat: theBodyFormat [
 	^ znClient get
 ]
 
+{ #category : #'api - user' }
+ConfluencePharoAPI >> getUsers: anArrayOfUserID [
+
+	self prepareZnClient.
+	znClient path: self basePath , '/users-bulk'.
+
+	self rawData ifFalse: [
+		znClient contentReader: [ :entity |
+			generalReader
+				on: entity contents readStream;
+				nextAs: ConfluencePharoUserResearchResult ] ].
+
+
+	znClient contents: { ('accountIds' -> anArrayOfUserID) } asDictionary.
+	^ znClient post
+]
+
 { #category : #initialization }
 ConfluencePharoAPI >> initReader [
 
@@ -151,6 +168,9 @@ ConfluencePharoAPI >> initReader [
 		(mapping mapInstVar: #space) valueSchema: ConfluencePharoSpace.
 		(mapping mapInstVar: #body) valueSchema: ConfluencePharoPageBody ].
 
+	generalReader
+		for: ConfluencePharoUser
+		do: [ :mapping | mapping mapAllInstVars ].
 
 	generalReader
 		for: ConfluencePharoSpace
@@ -161,8 +181,19 @@ ConfluencePharoAPI >> initReader [
 		(mapping mapInstVar: #view) valueSchema: ConfluencePharoPageBodyView ].
 
 	generalReader
+		for: ConfluencePharoUserResearchResult
+		do: [ :mapping |
+			(mapping mapInstVar: #results) valueSchema:
+				#ArrayOfConfluencePharoUser ].
+
+	generalReader
 		for: ConfluencePharoPageBodyView
-		do: [ :mapping | mapping mapAllInstVars ]
+		do: [ :mapping | mapping mapAllInstVars ].
+
+	generalReader
+		for: #ArrayOfConfluencePharoUser
+		customDo: [ :mapping |
+		mapping listOfElementSchema: ConfluencePharoUser ]
 ]
 
 { #category : #initialization }
