@@ -102,6 +102,21 @@ ConfluencePharoAPI >> generalReader: anObject [
 	generalReader := anObject
 ]
 
+{ #category : #'api - blog post' }
+ConfluencePharoAPI >> getBlogPost: id bodyFormat: theBodyFormat [
+
+	self prepareZnClient.
+	znClient path: self basePath , '/blogposts/' , id printString.
+	theBodyFormat ifNotNil: [ :bodyFormat |
+		znClient queryAt: #'body-format' put: theBodyFormat ].
+	self rawData ifFalse: [
+		znClient contentReader: [ :entity |
+			generalReader
+				on: entity contents readStream;
+				nextAs: ConfluencePharoBlogPost ] ].
+	^ znClient get
+]
+
 { #category : #'api - page' }
 ConfluencePharoAPI >> getPage: id [
 
@@ -130,6 +145,12 @@ ConfluencePharoAPI >> initReader [
 		mapping mapAllInstVars.
 		(mapping mapInstVar: #space) valueSchema: ConfluencePharoSpace.
 		(mapping mapInstVar: #body) valueSchema: ConfluencePharoPageBody ].
+
+	generalReader for: ConfluencePharoBlogPost do: [ :mapping |
+		mapping mapAllInstVars.
+		(mapping mapInstVar: #space) valueSchema: ConfluencePharoSpace.
+		(mapping mapInstVar: #body) valueSchema: ConfluencePharoPageBody ].
+
 
 	generalReader
 		for: ConfluencePharoSpace
