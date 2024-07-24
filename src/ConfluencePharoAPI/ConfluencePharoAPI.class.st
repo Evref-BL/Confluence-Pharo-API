@@ -64,6 +64,20 @@ ConfluencePharoAPI >> bearerToken: anObject [
 	bearerToken := anObject
 ]
 
+{ #category : #'api - children' }
+ConfluencePharoAPI >> childrenOfPage: pageID [
+
+	self prepareZnClient.
+	znClient path:
+		self basePath , '/pages/' , pageID printString , '/children'.
+	self rawData ifFalse: [
+		znClient contentReader: [ :entity |
+			generalReader
+				on: entity contents readStream;
+				nextAs: ConfluencePharoPage ] ].
+	^ znClient get
+]
+
 { #category : #accessing }
 ConfluencePharoAPI >> endpoint [
 
@@ -88,13 +102,13 @@ ConfluencePharoAPI >> generalReader: anObject [
 	generalReader := anObject
 ]
 
-{ #category : #'api - content' }
+{ #category : #'api - page' }
 ConfluencePharoAPI >> getPage: id [
 
 	^ self getPage: id bodyFormat: #view
 ]
 
-{ #category : #'api - content' }
+{ #category : #'api - page' }
 ConfluencePharoAPI >> getPage: id bodyFormat: theBodyFormat [
 
 	self prepareZnClient.
