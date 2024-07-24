@@ -6,10 +6,23 @@ Class {
 		'type',
 		'title',
 		'body',
-		'space'
+		'space',
+		'authorId'
 	],
 	#category : #'ConfluencePharoAPI-Model'
 }
+
+{ #category : #accessing }
+ConfluencePharoBlogPost >> authorId [
+
+	^ authorId
+]
+
+{ #category : #accessing }
+ConfluencePharoBlogPost >> authorId: anObject [
+
+	authorId := anObject
+]
 
 { #category : #accessing }
 ConfluencePharoBlogPost >> body [
