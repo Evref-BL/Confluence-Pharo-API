@@ -102,6 +102,15 @@ ConfluencePharoAPI >> generalReader: anObject [
 	generalReader := anObject
 ]
 
+{ #category : #'api - attachement' }
+ConfluencePharoAPI >> getAttachement: attachementURl [
+
+	self prepareZnClient.
+	znClient accept: ZnMimeType imagePng.
+	znClient contentReader: [ :entity | entity bytes ].
+	^ znClient get: attachementURl
+]
+
 { #category : #'api - blog post' }
 ConfluencePharoAPI >> getBlogPost: id bodyFormat: theBodyFormat [
 
