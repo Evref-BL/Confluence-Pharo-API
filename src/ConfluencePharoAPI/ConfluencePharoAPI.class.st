@@ -117,6 +117,21 @@ ConfluencePharoAPI >> getBlogPost: id bodyFormat: theBodyFormat [
 	^ znClient get
 ]
 
+{ #category : #'api - blog post' }
+ConfluencePharoAPI >> getBlogPostAttachments: id [
+
+	self prepareZnClient.
+	znClient path:
+		self basePath , '/blogposts/' , id printString , '/attachments'.
+
+	self rawData ifFalse: [
+		znClient contentReader: [ :entity |
+			generalReader
+				on: entity contents readStream;
+				nextAs: ConfluencePharoBlogPostAttachementsResult ] ].
+	^ znClient get
+]
+
 { #category : #'api - page' }
 ConfluencePharoAPI >> getPage: id [
 
@@ -169,6 +184,10 @@ ConfluencePharoAPI >> initReader [
 		(mapping mapInstVar: #body) valueSchema: ConfluencePharoPageBody ].
 
 	generalReader
+		for: ConfluencePharoBlogPostAttachement
+		do: [ :mapping | mapping mapAllInstVars ].
+
+	generalReader
 		for: ConfluencePharoUser
 		do: [ :mapping | mapping mapAllInstVars ].
 
@@ -187,13 +206,25 @@ ConfluencePharoAPI >> initReader [
 				#ArrayOfConfluencePharoUser ].
 
 	generalReader
+		for: ConfluencePharoBlogPostAttachementsResult
+		do: [ :mapping |
+			(mapping mapInstVar: #results) valueSchema:
+				#ArrayOfConfluencePharoBlogPostAttachement ].
+
+
+	generalReader
 		for: ConfluencePharoPageBodyView
 		do: [ :mapping | mapping mapAllInstVars ].
 
 	generalReader
 		for: #ArrayOfConfluencePharoUser
 		customDo: [ :mapping |
-		mapping listOfElementSchema: ConfluencePharoUser ]
+		mapping listOfElementSchema: ConfluencePharoUser ].
+
+	generalReader
+		for: #ArrayOfConfluencePharoBlogPostAttachement
+		customDo: [ :mapping |
+			mapping listOfElementSchema: ConfluencePharoBlogPostAttachement ]
 ]
 
 { #category : #initialization }
