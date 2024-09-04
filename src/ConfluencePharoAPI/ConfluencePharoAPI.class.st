@@ -11,7 +11,8 @@ Class {
 		'apiToken',
 		'bearerToken',
 		'rawData',
-		'generalReader'
+		'generalReader',
+		'writer'
 	],
 	#category : #ConfluencePharoAPI
 }
@@ -78,6 +79,29 @@ ConfluencePharoAPI >> childrenOfPage: pageID [
 	^ znClient get
 ]
 
+{ #category : #'api - page' }
+ConfluencePharoAPI >> createPage: title inSpace: spaceID withParentId: aParentID andBody: aConfluencePharoPageBodyWrite [
+
+	self prepareZnClient.
+	znClient path: self basePath , '/pages'.
+	self rawData ifFalse: [
+		znClient contentReader: [ :entity |
+			generalReader
+				on: entity contents readStream;
+				nextAs: ConfluencePharoPage ] ].
+	znClient contentWriter: [ :data |
+		ZnEntity json: (String streamContents: [ :str |
+				 writer
+					 on: str;
+					 nextPut: data ]) ].
+	znClient contents: {
+			(#title -> title).
+			(#spaceId -> spaceID).
+			(#parentId -> aParentID).
+			(#body -> aConfluencePharoPageBodyWrite) } asDictionary.
+	^ znClient post
+]
+
 { #category : #accessing }
 ConfluencePharoAPI >> endpoint [
 
@@ -100,6 +124,26 @@ ConfluencePharoAPI >> generalReader [
 ConfluencePharoAPI >> generalReader: anObject [
 
 	generalReader := anObject
+]
+
+{ #category : #'helper - pages' }
+ConfluencePharoAPI >> getAllPagesOfSpaceId: aSpaceId [
+
+	| pages tmp itemByPage |
+	itemByPage := 25.
+	pages := OrderedCollection new.
+	tmp := self getPagesFromCursor: nil spaceId: { aSpaceId }.
+
+	pages addAll: tmp results.
+	[ tmp results size = itemByPage and: [ tmp _links next isNotNil ] ]
+		whileTrue: [
+			tmp := self
+				       getPagesFromCursor:
+				       ((tmp _links base , tmp _links next) asZnUrl queryAt:
+					        #cursor)
+				       spaceId: { aSpaceId }.
+			pages addAll: tmp results ].
+	^ pages
 ]
 
 { #category : #'api - attachement' }
@@ -152,6 +196,7 @@ ConfluencePharoAPI >> getPage: id bodyFormat: theBodyFormat [
 
 	self prepareZnClient.
 	znClient path: self basePath , '/pages/' , id printString.
+	znClient queryAt: #'include-labels' put: true.
 	theBodyFormat ifNotNil: [ :bodyFormat |
 		znClient queryAt: #'body-format' put: theBodyFormat ].
 	self rawData ifFalse: [
@@ -159,6 +204,37 @@ ConfluencePharoAPI >> getPage: id bodyFormat: theBodyFormat [
 			generalReader
 				on: entity contents readStream;
 				nextAs: ConfluencePharoPage ] ].
+	^ znClient get
+]
+
+{ #category : #'api - pages' }
+ConfluencePharoAPI >> getPagesFromCursor: aCursorString spaceId: anArrayOfSpaceId [
+
+	^ self
+		  getPagesWithBodyFormat: nil
+		  cursor: aCursorString
+		  spaceId: anArrayOfSpaceId
+]
+
+{ #category : #'api - pages' }
+ConfluencePharoAPI >> getPagesWithBodyFormat: theBodyFormat cursor: aCursorString spaceId: anArrayOfSpaceId [
+
+	self prepareZnClient.
+	znClient path: self basePath , '/pages'.
+
+	theBodyFormat ifNotNil: [ :bodyFormat |
+		znClient queryAt: #'body-format' put: bodyFormat ].
+	aCursorString ifNotNil: [ :cursor |
+		znClient queryAt: #cursor put: cursor ].
+	anArrayOfSpaceId ifNotNil: [ :array |
+		znClient queryAt: #'space-id' put: ($, join: array) ].
+
+
+	self rawData ifFalse: [
+		znClient contentReader: [ :entity |
+			generalReader
+				on: entity contents readStream;
+				nextAs: ConfluencePharoArrayOfPageResult ] ].
 	^ znClient get
 ]
 
@@ -185,7 +261,13 @@ ConfluencePharoAPI >> initReader [
 	generalReader for: ConfluencePharoPage do: [ :mapping |
 		mapping mapAllInstVars.
 		(mapping mapInstVar: #space) valueSchema: ConfluencePharoSpace.
-		(mapping mapInstVar: #body) valueSchema: ConfluencePharoPageBody ].
+		(mapping mapInstVar: #body) valueSchema: ConfluencePharoPageBody.
+		mapping
+			mapProperty: #labels
+			getter: [ :el | "Not used" ]
+			setter: [ :page :value |
+				page labels: ((value at: #results) collect: [ :item |
+						 ConfluencePharoLabel fromDictionary: item ]) ] ].
 
 	generalReader for: ConfluencePharoBlogPost do: [ :mapping |
 		mapping mapAllInstVars.
@@ -198,6 +280,9 @@ ConfluencePharoAPI >> initReader [
 
 	generalReader
 		for: ConfluencePharoUser
+		do: [ :mapping | mapping mapAllInstVars ].
+	generalReader
+		for: ConfluencePharoLinks
 		do: [ :mapping | mapping mapAllInstVars ].
 
 	generalReader
@@ -233,7 +318,27 @@ ConfluencePharoAPI >> initReader [
 	generalReader
 		for: #ArrayOfConfluencePharoBlogPostAttachement
 		customDo: [ :mapping |
-			mapping listOfElementSchema: ConfluencePharoBlogPostAttachement ]
+			mapping listOfElementSchema: ConfluencePharoBlogPostAttachement ].
+
+
+	generalReader for: ConfluencePharoArrayOfPageResult do: [ :mapping |
+		(mapping mapInstVar: #results) valueSchema:
+			#ArrayOfConfluencePharoPage.
+		(mapping mapInstVar: #_links) valueSchema: ConfluencePharoLinks ].
+
+	generalReader
+		for: #ArrayOfConfluencePharoPage
+		customDo: [ :mapping |
+		mapping listOfElementSchema: ConfluencePharoPage ]
+]
+
+{ #category : #initialization }
+ConfluencePharoAPI >> initWriter [
+
+	writer := NeoJSONWriter new.
+	writer
+		for: ConfluencePharoPageBodyWrite
+		do: [ :mapping | mapping mapAllInstVars ].
 ]
 
 { #category : #initialization }
@@ -245,6 +350,7 @@ ConfluencePharoAPI >> initialize [
 	https := true.
 	generalReader := NeoJSONReader new.
 	self initReader.
+	self initWriter.
 	self rawData: false
 ]
 

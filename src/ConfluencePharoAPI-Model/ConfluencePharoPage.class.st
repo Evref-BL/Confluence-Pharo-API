@@ -6,10 +6,24 @@ Class {
 		'type',
 		'title',
 		'body',
-		'space'
+		'space',
+		'labels',
+		'authorId'
 	],
 	#category : #'ConfluencePharoAPI-Model'
 }
+
+{ #category : #accessing }
+ConfluencePharoPage >> authorId [
+
+	^ authorId
+]
+
+{ #category : #accessing }
+ConfluencePharoPage >> authorId: anObject [
+
+	authorId := anObject
+]
 
 { #category : #accessing }
 ConfluencePharoPage >> body [
@@ -33,6 +47,18 @@ ConfluencePharoPage >> id [
 ConfluencePharoPage >> id: anObject [
 
 	id := anObject
+]
+
+{ #category : #accessing }
+ConfluencePharoPage >> labels [
+
+	^ labels
+]
+
+{ #category : #accessing }
+ConfluencePharoPage >> labels: anObject [
+
+	labels := anObject
 ]
 
 { #category : #accessing }
