@@ -167,7 +167,8 @@ ConfluencePharoAPI >> downloadPage: aPageIDOrConfluencePage asPDFIn: aFileRefere
 		contentWriter: [ :data |  ].
 	znClient path: locationOfPDF.
 	znClient get.
-	aFileReference binaryWriteStreamDo: [ :writeStream |
+	reference ensureCreateFile.
+	reference binaryWriteStreamDo: [ :writeStream |
 		writeStream nextPutAll: znClient entity bytes ]
 ]
 
