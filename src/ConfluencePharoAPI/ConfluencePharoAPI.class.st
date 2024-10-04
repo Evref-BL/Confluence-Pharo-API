@@ -102,6 +102,75 @@ ConfluencePharoAPI >> createPage: title inSpace: spaceID withParentId: aParentID
 	^ znClient post
 ]
 
+{ #category : #'api - page' }
+ConfluencePharoAPI >> downloadPage: aPageIDOrConfluencePage asPDFIn: aFileReference [
+
+	| pageId reference firstAnwser secondAnwser startTaskID ajsTaskID locationOfPDF startLocation endLocation |
+	pageId := (aPageIDOrConfluencePage isKindOf: ConfluencePharoPage)
+		          ifTrue: [ aPageIDOrConfluencePage id ]
+		          ifFalse: [ aPageIDOrConfluencePage ].
+	reference := aFileReference asFileReference.
+	self prepareZnClient.
+	znClient
+		accept: ZnMimeType applicationJson;
+		contentReader: [ :entity |  ];
+		contentWriter: [ :data |  ].
+	znClient path: '/wiki/spaces/flyingpdf/pdfpageexport.action'.
+	znClient headerAt: 'X-Atlassian-Token' put: 'no-check'.
+	znClient queryAt: 'pageId' put: pageId.
+	"trigger"
+	firstAnwser := znClient
+		               get;
+		               response.
+	"Get triggered taskID"
+	startTaskID := (firstAnwser entity string findString:
+		                '<meta name="ajs-taskId" content="')
+	               + '<meta name="ajs-taskId" content="' size.
+	ajsTaskID := firstAnwser entity string
+		             copyFrom: startTaskID
+		             to: startTaskID + 8.
+	"extract task status"
+	self prepareZnClient.
+	znClient
+		accept: ZnMimeType applicationXml;
+		contentReader: [ :entity |  ];
+		contentWriter: [ :data |  ].
+	znClient path: '/wiki/runningtaskxml.action'.
+	znClient headerAt: 'X-Atlassian-Token' put: 'no-check'.
+	znClient queryAt: 'taskId' put: ajsTaskID. "how to get this taskID?"
+	"trigger"
+	secondAnwser := znClient
+		                get;
+		                response.
+	"wait for pdf generation"
+	[
+	secondAnwser entity string includesSubstring:
+		'<isComplete>true</isComplete>' ] whileFalse: [
+		secondAnwser := znClient
+			                get;
+			                response.
+		0.5 second wait ].
+
+
+	startLocation := (secondAnwser entity string findString:
+		                  'href=&quot;') + 'href=&quot;' size.
+	endLocation := (secondAnwser entity string findString: '&quot;&gt;')
+	               - 1.
+	locationOfPDF := secondAnwser entity string
+		                 copyFrom: startLocation
+		                 to: endLocation.
+
+	self prepareZnClient.
+	znClient
+		accept: ZnMimeType applicationPdf;
+		contentReader: [ :entity |  ];
+		contentWriter: [ :data |  ].
+	znClient path: locationOfPDF.
+	znClient get.
+	aFileReference binaryWriteStreamDo: [ :writeStream |
+		writeStream nextPutAll: znClient entity bytes ]
+]
+
 { #category : #accessing }
 ConfluencePharoAPI >> endpoint [
 
